@@ -1,11 +1,18 @@
 import 'dotenv/config'
-import OpenAI from "openai";
+import { argv } from 'node:process'
+import { promisify } from 'node:util'
 
-const client = new OpenAI();
+import { exec as exec_unpromised } from 'node:child_process'
 
-const response = await client.responses.create({
-    model: "gpt-5-nano",
-    input: "Write a one-sentence bedtime story about a unicorn."
-});
+let exec = promisify(exec_unpromised);
 
-console.log(response.output_text);
+if (argv[2] == undefined) {
+    throw Error("Didn't pass in website. Do node start -- https://example.com");
+}
+
+const website = argv[2];
+
+const { stdout, stderr } = await exec(`mkdir -p HTTrack-website-downloads && rm -rf "./HTTrack-website-downloads/*" && cd HTTrack-website-downloads && httrack --stay-on-same-domain ${website} -r3`);
+
+console.log(stdout);
+console.log(stderr);
