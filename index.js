@@ -12,7 +12,14 @@ if (argv[2] == undefined) {
 
 const website = argv[2];
 
-const { stdout, stderr } = await exec(`mkdir -p HTTrack-website-downloads && rm -rf "./HTTrack-website-downloads/*" && cd HTTrack-website-downloads && httrack --stay-on-same-domain ${website} -r3`);
+const { stdout, stderr } = await download_website_with_httrack(website);
 
 console.log(stdout);
 console.log(stderr);
+
+async function download_website_with_httrack(website) {
+    console.log("Downloading website");
+    const { stdout, stderr } = await exec(`mkdir -p HTTrack-website-downloads && rm -rf "./HTTrack-website-downloads/*" && cd HTTrack-website-downloads && httrack --stay-on-same-domain ${website} -r3`);
+
+    return { stdout, stderr };
+}
