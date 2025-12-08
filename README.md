@@ -26,7 +26,7 @@ Before running, replace the executablePath on line 84:
 const browser = await puppeteer.launch({ executablePath: '/home/apple/.nix-profile/bin/google-chrome-stable' });
 ```
 
-To where-ever a browser is on your system for puppeteer to use to generate pdfs.
+To wherever a browser is on your system for puppeteer to use to generate pdfs.
 
 ## Usage
 
