@@ -43,8 +43,6 @@ for (const img of website_document.querySelectorAll("img")) {
 
     const base64img = fs.readFileSync(`HTTrack-modified/${website_without_http}${img.src}`, "base64");
 
-    console.log(`HTTrack-modified/${website}${img.src}`);
-
     if (img.alt == "") {
         try {
             const { output_text: alt_text } = await openai.responses.create({
@@ -104,13 +102,4 @@ async function download_website_with_httrack(website) {
 
     console.log(stdout);
     console.log(stderr);
-}
-
-async function createFile(filePath) {
-  const fileContent = fs.createReadStream(filePath);
-  const result = await openai.files.create({
-    file: fileContent,
-    purpose: "vision",
-  });
-  return result.id;
 }
