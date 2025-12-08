@@ -20,15 +20,13 @@ const website = argv[2];
 
 const { stdout, stderr } = await download_website_with_httrack(website);
 
-// Remove the https:// from beginning
 const website_without_http = website.slice(8);
 const index_file_path = `./HTTrack-website-downloads/${website_without_http}index.html`;
-
 const index_file = await readFile(index_file_path, 'utf8');
+
 const { window: { document: website_document } } = new JSDOM(index_file);
 
-console.log("Copying website download and generating alt text...");
-
+console.log("Generating Alt Text");
 for (const img of website_document.querySelectorAll("img")) {
     if (!/wp-content/.test(img.src)) { // skip non-uploaded images
         continue;
@@ -45,7 +43,6 @@ for (const img of website_document.querySelectorAll("img")) {
     console.log(`HTTrack-modified/${website}${img.src}`);
 
     if (img.alt == "") {
-        console.log("Creating alt text...");
         try {
             const { output_text: alt_text } = await openai.responses.create({
                 model: "gpt-4.1-mini",
@@ -95,9 +92,9 @@ await page.pdf({
     path: `./website-as-pdf/${website_without_http}index.pdf`,
 });
 
-console.log("Pdf is now at " + `./website-as-pdf/${website_without_http}index.pdf`);
-
 await browser.close();
+
+console.log("Pdf is now at " + `./website-as-pdf/${website_without_http}index.pdf`);
 
 async function download_website_with_httrack(website) {
     console.log(`Downloading ${website}`);
