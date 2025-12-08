@@ -28,6 +28,13 @@ const browser = await puppeteer.launch({ executablePath: '/home/apple/.nix-profi
 
 To wherever a browser is on your system for puppeteer to use to generate pdfs.
 
+Additionally, add your OpenAI API key to a `.env` file like so: 
+
+```
+OPENAI_API_KEY=sk-proj-62dc0cc81916b7daccc049fca8736881507984ace21dd5b6949a66e9d478045a
+```
+
+
 ## Usage
 
 ```bash
