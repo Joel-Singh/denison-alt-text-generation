@@ -18,7 +18,7 @@ if (argv[2] == undefined) {
 
 const website = argv[2];
 
-// const { stdout, stderr } = await download_website_with_httrack(website);
+const { stdout, stderr } = await download_website_with_httrack(website);
 
 // Remove the https:// from beginning
 const website_without_http = website.slice(8);
