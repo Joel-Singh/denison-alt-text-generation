@@ -2,7 +2,7 @@
 
 Quick and dirty node script to take in a reporting project article web link,
 download it locally with HTTrack, modify the images to have alt text by
-calling to the OpenAI api, and the converting it all to a pdf.
+calling to the OpenAI api, and then converting it all to a pdf.
 
 This is a rough script, forgetting the trailing `/` in your url or even looking
 at it wrong would break it. Additionally, it will almost definitely not work on
