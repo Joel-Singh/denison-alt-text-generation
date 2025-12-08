@@ -18,7 +18,10 @@ if (argv[2] == undefined) {
 
 const website = argv[2];
 
-const { stdout, stderr } = await download_website_with_httrack(website);
+await download_website_with_httrack(website);
+
+// Copy the website download
+await exec(`rm -rf HTTrack-modified && cp -r HTTrack-website-downloads HTTrack-modified`);
 
 const website_without_http = website.slice(8);
 const index_file_path = `./HTTrack-website-downloads/${website_without_http}index.html`;
@@ -72,8 +75,6 @@ for (const img of website_document.querySelectorAll("img")) {
     }
 }
 
-// Copy the website download and modify the copy
-await exec(`rm -rf HTTrack-modified && cp -r HTTrack-website-downloads HTTrack-modified`);
 
 // Write the index with the new alt text
 const copied_index_file_path = `./HTTrack-modified/${website_without_http}index.html`;
@@ -98,7 +99,8 @@ console.log("Pdf is now at " + `./website-as-pdf/${website_without_http}index.pd
 
 async function download_website_with_httrack(website) {
     console.log(`Downloading ${website}`);
-    const { stdout, stderr } = await exec(`mkdir -p HTTrack-website-downloads && rm -rf "./HTTrack-website-downloads/*" && cd HTTrack-website-downloads && httrack ${website} +* -r2`);
+
+    const { stdout, stderr } = await exec(`mkdir -p HTTrack-website-downloads && rm -rf ./HTTrack-website-downloads/* && cd HTTrack-website-downloads && httrack ${website} +* -r2`);
 
     console.log(stdout);
     console.log(stderr);
