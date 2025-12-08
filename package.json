@@ -13,6 +13,7 @@
   "dependencies": {
     "dotenv": "^17.2.3",
     "jsdom": "^27.2.0",
-    "openai": "^6.10.0"
+    "openai": "^6.10.0",
+    "puppeteer-core": "^24.32.0"
   }
 }

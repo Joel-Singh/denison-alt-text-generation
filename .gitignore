@@ -2,3 +2,7 @@
 node_modules
 HTTrack-website-downloads
 HTTrack-modified
+.envrc
+.direnv
+website-as-pdf
+shell.nix
