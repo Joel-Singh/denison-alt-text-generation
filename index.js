@@ -6,26 +6,29 @@ import { readFile, writeFile} from 'node:fs/promises'
 import fs from 'fs'
 import { JSDOM } from 'jsdom'
 import puppeteer from 'puppeteer-core'
-import OpenAI from "openai"
-
-const openai = new OpenAI();
+import ollama from 'ollama'
+import path from 'node:path'
 
 let exec = promisify(exec_unpromised);
 
 if (argv[2] == undefined) {
-    throw Error("Didn't pass in website. Do node start -- https://example.com");
+    throw Error("Didn't pass in website. Do npm start -- '/home/apple/downloaded-website/new-puppy-shelter/'");
 }
 
-const website = argv[2];
-
-await download_website_with_httrack(website);
+let website_download = argv[2];
 
 // Copy the website download
-await exec(`rm -rf HTTrack-modified && cp -r HTTrack-website-downloads HTTrack-modified`);
+await exec(`rm -rf website-to-archive && cp -r ${path.dirname(website_download)} website-to-archive`);
 
-const website_without_http = website.slice(8);
-const index_file_path = `./HTTrack-website-downloads/${website_without_http}index.html`;
-const index_file = await readFile(index_file_path, 'utf8');
+// WARNING: This is a hardcoded path, we're assuming the
+// downloaded folder is called
+// "www.thereportingproject.com"
+//
+// Change the website download to a copy so we don't
+// overwrite the original
+website_download = `./website-to-archive/${path.basename(website_download)}`;
+
+const index_file = await readFile(`${website_download}/index.html`, 'utf8');
 
 const { window: { document: website_document } } = new JSDOM(index_file);
 
@@ -41,28 +44,15 @@ for (const img of website_document.querySelectorAll("img")) {
     // Removes "loading=lazy" from images so they show up in pdfs
     img.removeAttribute("loading");
 
-    const base64img = fs.readFileSync(`HTTrack-modified/${website_without_http}${img.src}`, "base64");
+    // const base64img = fs.readFileSync(`${website_download}${img.src}`, "base64");
 
     if (img.alt == "") {
         try {
-            const { output_text: alt_text } = await openai.responses.create({
-                model: "gpt-4.1-mini",
-                input: [
-                    {
-                        role: "user",
-                        content: [
-                            {
-                                type: "input_text",
-                                text: "Generate alt text"
-                            },
-                            {
-                                type: "input_image",
-                                image_url: `data:image/jpg;base64,${base64img}`
-                            }
-                        ]
-                    }
-                ]
-            });
+            // const { message: { content: alt_text } } = await ollama.chat({
+            //     model: 'qwen3-vl:30b',
+            //     messages: [{role: 'user', content: 'Hello!'}],
+            // })
+            const alt_text = "This is a placeholder!";
 
             console.log(`Generated as alt text: ${alt_text}`);
 
@@ -73,33 +63,24 @@ for (const img of website_document.querySelectorAll("img")) {
     }
 }
 
-
 // Write the index with the new alt text
-const copied_index_file_path = `./HTTrack-modified/${website_without_http}index.html`;
-await writeFile(copied_index_file_path, website_document.querySelector(":root").outerHTML);
+await writeFile(`${website_download}/index.html`, website_document.querySelector(":root").outerHTML);
+
 
 console.log("Taking a pdf of the site");
 const browser = await puppeteer.launch({ executablePath: '/home/apple/.nix-profile/bin/google-chrome-stable' });
 const page = await browser.newPage();
 
-const url = `${process.cwd()}/HTTrack-modified/${website_without_http}index.html`;
-await page.goto(`file:///${process.cwd()}/HTTrack-modified/${website_without_http}index.html`);
+// Slice to get rid of the relative './'
+const url = `file:///${process.cwd()}/${website_download.slice(2)}/index.html`;
+await page.goto(url);
 
-await exec(`mkdir -p ./website-as-pdf/${website_without_http}`);
+await exec(`mkdir -p ./website-as-pdf/${path.basename(website_download)}`);
 
 await page.pdf({
-    path: `./website-as-pdf/${website_without_http}index.pdf`,
+    path: `./website-as-pdf/${path.basename(website_download)}/index.pdf`,
 });
 
 await browser.close();
 
-console.log("Pdf is now at " + `./website-as-pdf/${website_without_http}index.pdf`);
-
-async function download_website_with_httrack(website) {
-    console.log(`Downloading ${website}`);
-
-    const { stdout, stderr } = await exec(`mkdir -p HTTrack-website-downloads && rm -rf ./HTTrack-website-downloads/* && cd HTTrack-website-downloads && httrack ${website} +* -r2`);
-
-    console.log(stdout);
-    console.log(stderr);
-}
+console.log("Pdf is now at " + `./website-as-pdf/${path.basename(website_download)}/index.pdf`);
