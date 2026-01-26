@@ -44,21 +44,27 @@ for (const img of website_document.querySelectorAll("img")) {
     // Removes "loading=lazy" from images so they show up in pdfs
     img.removeAttribute("loading");
 
-    // const base64img = fs.readFileSync(`${website_download}${img.src}`, "base64");
+    const base64img = fs.readFileSync(`${website_download}/${img.src}`, "base64");
 
     if (img.alt == "") {
         try {
-            // const { message: { content: alt_text } } = await ollama.chat({
-            //     model: 'qwen3-vl:30b',
-            //     messages: [{role: 'user', content: 'Hello!'}],
-            // })
-            const alt_text = "This is a placeholder!";
+            const { message: { content: alt_text } } = await ollama.chat({
+                model: 'qwen3-vl:30b',
+                messages: [
+                    {
+                        role: 'user',
+                        content: 'Generate alt text for this image',
+                        images: [`${website_download}/${img.src}`]
+                    }
+                ],
+            })
 
             console.log(`Generated as alt text: ${alt_text}`);
 
             img.alt = alt_text;
         } catch (error) {
             console.error(error);
+            process.exit(1);
         }
     }
 }
