@@ -48,16 +48,17 @@ for (const img of website_document.querySelectorAll("img")) {
 
     if (img.alt == "") {
         try {
-            const { message: { content: alt_text } } = await ollama.chat({
-                model: 'qwen3-vl:30b',
-                messages: [
-                    {
-                        role: 'user',
-                        content: 'Generate alt text for this image',
-                        images: [`${website_download}/${img.src}`]
-                    }
-                ],
-            })
+            let alt_text = "";
+            // const { message: { content: alt_text } } = await ollama.chat({
+            //     model: 'qwen3-vl:30b',
+            //     messages: [
+            //         {
+            //             role: 'user',
+            //             content: 'Generate alt text for this image',
+            //             images: [`${website_download}/${img.src}`]
+            //         }
+            //     ],
+            // })
 
             console.log(`Generated as alt text: ${alt_text}`);
 
