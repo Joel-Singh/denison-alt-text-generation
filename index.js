@@ -20,10 +20,6 @@ let website_download = argv[2];
 // Copy the website download
 await exec(`rm -rf website-to-archive && cp -r ${path.dirname(website_download)} website-to-archive`);
 
-// WARNING: This is a hardcoded path, we're assuming the
-// downloaded folder is called
-// "www.thereportingproject.com"
-//
 // Change the website download to a copy so we don't
 // overwrite the original
 website_download = `./website-to-archive/${path.basename(website_download)}`;
