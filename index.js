@@ -18,7 +18,7 @@ if (argv[2] == undefined) {
 let website_download = argv[2];
 
 // Copy the website download
-await exec(`rm -rf website-to-archive && cp -r ${path.dirname(website_download)} website-to-archive`);
+await exec(`rm -rf website-to-archive && rsync -a --del ${path.dirname(website_download)}/ website-to-archive`);
 
 // Change the website download to a copy so we don't
 // overwrite the original
