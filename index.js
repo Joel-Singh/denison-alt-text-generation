@@ -28,6 +28,16 @@ const index_file = await readFile(`${website_download}/index.html`, 'utf8');
 
 const { window: { document: website_document } } = new JSDOM(index_file);
 
+// Remove the gravatar avatars. They're just blank on the real
+// site... not sure why they're there.
+website_document.querySelector(".author-avatar").remove();
+
+// A little square is made to the left of "category" links
+// with ::before elements. These are not rendered in PDFs.
+// The easiest fix is to just move the category link over
+// so there isn't an awkward 
+website_document.querySelector(".cat-links > a").setAttribute("style", "margin-left: -1.5em")
+
 console.log("Generating Alt Text");
 for (const img of website_document.querySelectorAll("img")) {
     if (!/wp-content/.test(img.src)) { // skip non-uploaded images
