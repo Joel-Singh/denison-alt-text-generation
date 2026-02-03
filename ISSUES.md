@@ -3,8 +3,11 @@
 - The initial download of the website missed any assets
   that were not on the www.thereportingproject.com domain
   including profile pictures. Most importantly, some
-  articles are on a different domain entirely,
-  Shorthand. Like https://njdenisonu.shorthandstories.com/art-in-the-ordinary/index.html
+  articles are on a different domain entirely, Shorthand.
+  Like
+  https://njdenisonu.shorthandstories.com/art-in-the-ordinary/index.html.
+  Exceptions should also be made for any image file like
+  .jpg, .jpeg, .png, etc
 
 - Currently my program only takes in one link
 
