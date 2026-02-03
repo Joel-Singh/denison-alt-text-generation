@@ -4,7 +4,7 @@
   that were not on the www.thereportingproject.com domain
   including profile pictures. Most importantly, some
   articles are on a different domain entirely,
-  "handshake?" something like that.
+  Shorthand. Like https://njdenisonu.shorthandstories.com/art-in-the-ordinary/index.html
 
 - Currently my program only takes in one link
 
