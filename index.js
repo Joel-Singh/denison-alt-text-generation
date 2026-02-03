@@ -40,10 +40,6 @@ website_document.querySelector(".cat-links > a").setAttribute("style", "margin-l
 
 console.log("Generating Alt Text");
 for (const img of website_document.querySelectorAll("img")) {
-    if (!/wp-content/.test(img.src)) { // skip non-uploaded images
-        continue;
-    }
-
     // Need to remove the srcset from images--we only have just the src image from the download
     img.removeAttribute("srcset");
 
