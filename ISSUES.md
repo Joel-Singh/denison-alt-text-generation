@@ -13,3 +13,9 @@
 
 - In the interim, profile pictures of the author are being
   removed from the PDF, this should be fixed!
+
+- There may be more stylistic issues that may be there,
+  awkward spacing and whatnot
+
+- Links in the PDF are currently non-functional (this can
+  be fixed).
