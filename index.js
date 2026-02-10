@@ -2,7 +2,7 @@ import 'dotenv/config'
 import { argv } from 'node:process'
 import { promisify } from 'node:util'
 import { exec as exec_unpromised } from 'node:child_process'
-import { readFile, writeFile} from 'node:fs/promises'
+import { open } from 'node:fs/promises'
 import fs from 'fs'
 import { JSDOM } from 'jsdom'
 import puppeteer from 'puppeteer-core'
@@ -11,25 +11,37 @@ import path from 'node:path'
 
 let exec = promisify(exec_unpromised);
 
-if (argv[2] == undefined) {
-    throw Error("Didn't pass in a website. Do npm start -- 'https://example.com'");
+console.log("Reading web links for ./article-links.txt");
+
+let article_links = [];
+
+console.log("Reading ./article-links.txt");
+const article_links_file = await open('./article-links.txt');
+for await (const line of article_links_file.readLines()) {
+    article_links.push(line);
 }
-
-let url = argv[2];
-
-// Copy the httrack archive
 
 console.log("Starting browser");
 const browser = await puppeteer.launch({ executablePath: '/home/apple/.nix-profile/bin/google-chrome-stable' });
 const page = await browser.newPage();
 
-console.log(`Generating PDF for ${url}`);
+const timed_out_articles = [];
+for (let i = 0; i < article_links.length; i++) {
+    const url = article_links[i];
+    console.log(`Generating PDF for ${url}`)
+    console.log(`article ${i+1} out of ${article_links.length}`)
 
-await generate_pdf(url, page);
+    await generate_pdf(url, page, timed_out_articles);
+}
 
 await browser.close();
 
-async function generate_pdf(url, page){
+console.log("Finished generating all PDFs, manually check the following timed out articles: ");
+for (const article of timed_out_articles) {
+    console.log(article);
+}
+
+async function generate_pdf(url, page, timed_out_articles){
     await page.goto(url);
 
     await page.evaluate(() => {
@@ -63,14 +75,26 @@ async function generate_pdf(url, page){
         }
     });
 
-    await exec(`mkdir -p ./website-as-pdf/`);
+    await exec(`mkdir -p ./articles-as-pdf/`);
 
-    console.log("Waiting for network idle");
-    await page.waitForNetworkIdle();
+    try {
+        await page.waitForNetworkIdle();
+    } catch (error) {
+        if (error.name === 'TimeoutError') {
+            timed_out_articles.push((await page.title()));
+        } else {
+            throw error;
+        }
+    }
 
-    console.log("Creating PDF");
+    const title_normalized =
+        (await page.title())
+        .replace(/[^a-zA-Z0-9 ]/g, '')
+        .replace(/ /g, '-')
+        .toLowerCase();
+
     await page.pdf({
-        path: `./website-as-pdf/index.pdf`,
+        path: `./articles-as-pdf/${title_normalized}.pdf`,
 
         // If set to false, the captions of figures will
         // have a white background covering up images
@@ -80,5 +104,5 @@ async function generate_pdf(url, page){
         tagged: true,
     });
 
-    console.log("Pdf is now at " + `./website-as-pdf/index.pdf`);
+    console.log("PDF now at " + `./articles-as-pdf/${title_normalized}.pdf`);
 }
