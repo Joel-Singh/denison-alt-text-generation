@@ -45,6 +45,22 @@ async function generate_pdf(url, page, timed_out_articles){
     await page.goto(url);
 
     await page.evaluate(() => {
+        // Replacing a embedded vimeo video with 
+        const embedded_vimeo_videos = document.querySelectorAll("figure.is-provider-vimeo");
+
+        for (const embedded_vimeo_video of embedded_vimeo_videos) {
+            if (embedded_vimeo_video != null) {
+                const title = embedded_vimeo_video.querySelector("iframe").title;
+
+                const src = embedded_vimeo_video.querySelector("iframe").src;
+
+                const replacement = document.createElement("ins");
+                replacement.innerHTML = `Embedded article video titled "${title}" not rendered in PDF. <a href="${src}">Original Link</a>.`;
+
+                embedded_vimeo_video.replaceWith(replacement);
+            }
+        }
+
         console.log("Generating Alt Text");
         for (const img of document.querySelectorAll("img")) {
             // Removes "loading=lazy" from images so they show up in pdfs

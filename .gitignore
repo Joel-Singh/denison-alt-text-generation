@@ -6,3 +6,4 @@ HTTrack-modified
 .direnv
 website-as-pdf
 shell.nix
+articles-as-pdf/*
