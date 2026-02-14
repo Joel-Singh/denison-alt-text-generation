@@ -24,23 +24,23 @@ for await (const line of article_links_file.readLines()) {
 console.log("Starting browser");
 const browser = await puppeteer.launch({ executablePath: '/home/apple/.nix-profile/bin/google-chrome-stable' });
 
-const LIMIT = 10;
 const timed_out_articles = [];
-for (let i = 0; i < article_links.length;) {
 
-    const articles_being_downloaded = [];
-    for (let j = 0; j < LIMIT && (i < article_links.length); j++) {
-        console.log(`article ${i+1} out of ${article_links.length}`);
-        const url = article_links[i];
-        articles_being_downloaded.push(generate_pdf(url, timed_out_articles));
+const articles_being_downloaded = [];
 
-        i += 1;
-    }
-
-    await Promise.all(articles_being_downloaded);
+let i = 0;
+const LIMIT = 10;
+for (let j = 0; j < LIMIT; j++) {
+    continually_generate_pdfs();
 }
 
-await browser.close();
+async function continually_generate_pdfs() {
+    if (i < article_links.length) {
+        console.log(`article ${i+1} out of ${article_links.length}`);
+        generate_pdf(article_links[i], timed_out_articles).then(continually_generate_pdfs);
+        i++;
+    }
+}
 
 console.log("Finished generating all PDFs, manually check the following timed out articles: ");
 for (const article of timed_out_articles) {
@@ -58,6 +58,8 @@ async function generate_pdf(url, timed_out_articles){
     console.log(`Generating PDF for ${url}`);
 
     console.log("Going to page");
+    // Sleep 0.2 to not DDOS the reporting project
+    await exec("sleep 0.2");
     await page.goto(url);
 
     await page.evaluate(() => {
