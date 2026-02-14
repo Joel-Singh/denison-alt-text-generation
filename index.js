@@ -40,6 +40,8 @@ async function continually_generate_pdfs() {
         generate_pdf(article_links[i], timed_out_articles).then(continually_generate_pdfs);
         i++;
     }
+
+    return;
 }
 
 console.log("Finished generating all PDFs, manually check the following timed out articles: ");
@@ -123,10 +125,15 @@ async function generate_pdf(url, timed_out_articles){
         }
     }
 
+    let title = (await page.title());
+    if (title == '') {
+        title = url.replace(/https\:\/\//, '');
+    }
+
     const title_normalized =
-        (await page.title())
-        .replace(/[^a-zA-Z0-9 ]/g, '')
-        .replace(/ /g, '-')
+        (title)
+        .replace(/[^a-zA-Z0-9\.\-\/\# ]/g, '')
+        .replace(/[ \.\/#]/g, '-')
         .toLowerCase();
 
     console.log("Downloading page as a pdf");
