@@ -30,24 +30,29 @@ const articles_being_downloaded = [];
 
 let i = 0;
 const LIMIT = 10;
+
+const pdfs_being_generated = [];
 for (let j = 0; j < LIMIT; j++) {
-    continually_generate_pdfs();
+    pdfs_being_generated.push(continually_generate_pdfs());
 }
 
-async function continually_generate_pdfs() {
-    if (i < article_links.length) {
-        console.log(`article ${i+1} out of ${article_links.length}`);
-        generate_pdf(article_links[i], timed_out_articles).then(continually_generate_pdfs);
-        i++;
-    }
+await Promise.all(pdfs_being_generated);
 
-    return;
-}
+await browser.close();
 
 console.log("Finished generating all PDFs, manually check the following timed out articles: ");
 for (const article of timed_out_articles) {
     console.log(article);
 }
+
+async function continually_generate_pdfs() {
+    if (i < article_links.length) {
+        console.log(`article ${i+1} out of ${article_links.length}`);
+        i++;
+        return generate_pdf(article_links[i-1], timed_out_articles).then(continually_generate_pdfs);
+    }
+}
+
 
 async function generate_pdf(url, timed_out_articles){
     let pdf_file_path = get_website_pdf_file_path(url);
