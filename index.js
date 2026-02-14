@@ -81,18 +81,7 @@ async function generate_pdf(url, timed_out_articles){
     // Sleep 0.2 to not DDOS the reporting project
     await exec("sleep 0.2");
 
-    try {
-        await page.goto(url);
-    } catch (error) {
-        console.log("Error on go to");
-
-        if (error.name === 'TimeoutError') {
-            console.log(`Timed out on ${url}!`);
-        }
-
-        throw error;
-    }
-
+    await page_goto_with_retry(page, url);
 
     await page.evaluate(() => {
         // Replacing a embedded vimeo video with 
@@ -183,4 +172,17 @@ function get_website_pdf_file_path(url) {
         .toLowerCase();
 
     return `./articles-as-pdf/${file_name}.pdf`;
+}
+
+async function page_goto_with_retry(page, url) {
+    try {
+        await page.goto(url)
+    } catch (error) {
+        if (error.name === "TimeoutError") {
+            console.log(`Failed to go to ${url}, trying again`);
+            await page_goto_with_retry(page, url);
+        } else {
+            throw error;
+        }
+    }
 }
