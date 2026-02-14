@@ -23,12 +23,16 @@ for await (const line of article_links_file.readLines()) {
 
 console.log("Starting browser");
 const browser = await puppeteer.launch({ executablePath: '/home/apple/.nix-profile/bin/google-chrome-stable' });
+
 const page = await browser.newPage();
+// Allows the ability to log and see it in stdout
+await page.exposeFunction('customLog', (message) => {
+    console.log(`${message}`);
+});
 
 const timed_out_articles = [];
 for (let i = 0; i < article_links.length; i++) {
     const url = article_links[i];
-    console.log(`Generating PDF for ${url}`)
     console.log(`article ${i+1} out of ${article_links.length}`)
 
     await generate_pdf(url, page, timed_out_articles);
@@ -42,12 +46,16 @@ for (const article of timed_out_articles) {
 }
 
 async function generate_pdf(url, page, timed_out_articles){
+    console.log(`Generating PDF for ${url}`);
+
+    console.log("Going to page");
     await page.goto(url);
 
     await page.evaluate(() => {
         // Replacing a embedded vimeo video with 
         const embedded_vimeo_videos = document.querySelectorAll("figure.is-provider-vimeo");
 
+        customLog("Replacing embedded vimeo videos with text");
         for (const embedded_vimeo_video of embedded_vimeo_videos) {
             if (embedded_vimeo_video != null) {
                 const title = embedded_vimeo_video.querySelector("iframe").title;
@@ -61,7 +69,7 @@ async function generate_pdf(url, page, timed_out_articles){
             }
         }
 
-        console.log("Generating Alt Text");
+        customLog("Generating Alt Text");
         for (const img of document.querySelectorAll("img")) {
             // Removes "loading=lazy" from images so they show up in pdfs
             img.removeAttribute("loading");
@@ -80,7 +88,7 @@ async function generate_pdf(url, page, timed_out_articles){
                     //     ],
                     // })
 
-                    console.log(`Generated as alt text: ${alt_text}`);
+                    // customLog(`Generated as alt text: ${alt_text}`);
 
                     img.alt = alt_text;
                 } catch (error) {
@@ -93,6 +101,7 @@ async function generate_pdf(url, page, timed_out_articles){
 
     await exec(`mkdir -p ./articles-as-pdf/`);
 
+    console.log("Waiting for the network to be idle")
     try {
         await page.waitForNetworkIdle();
     } catch (error) {
@@ -109,6 +118,7 @@ async function generate_pdf(url, page, timed_out_articles){
         .replace(/ /g, '-')
         .toLowerCase();
 
+    console.log("Downloading page as a pdf");
     await page.pdf({
         path: `./articles-as-pdf/${title_normalized}.pdf`,
 
