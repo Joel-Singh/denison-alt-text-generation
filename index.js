@@ -56,7 +56,14 @@ async function generate_pdf(url, timed_out_articles){
         return;
     }
 
-    const page = await browser.newPage();
+
+    let page;
+    try {
+        page = await browser.newPage();
+    } catch (error) {
+        console.log("Errored on new page");
+        throw error;
+    }
 
     // Allows the ability to log and see it in stdout
     await page.exposeFunction('customLog', (message) => {
@@ -72,12 +79,13 @@ async function generate_pdf(url, timed_out_articles){
     try {
         await page.goto(url);
     } catch (error) {
+        console.log("Error on go to");
+
         if (error.name === 'TimeoutError') {
-            timed_out_articles.push((await page.title()));
-        } else {
             console.log(`Timed out on ${url}!`);
-            throw error;
         }
+
+        throw error;
     }
 
 
@@ -135,6 +143,8 @@ async function generate_pdf(url, timed_out_articles){
     try {
         await page.waitForNetworkIdle();
     } catch (error) {
+        console.log("Errored on waiting for network idle");
+
         if (error.name === 'TimeoutError') {
             timed_out_articles.push((await page.title()));
         } else {
