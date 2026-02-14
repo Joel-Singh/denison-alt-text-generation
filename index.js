@@ -50,6 +50,12 @@ for (const article of timed_out_articles) {
 }
 
 async function generate_pdf(url, timed_out_articles){
+    let pdf_file_path = get_website_pdf_file_path(url);
+    if (fs.existsSync(pdf_file_path)) {
+        console.log(`Skipping ${url}, already downloaded`);
+        return;
+    }
+
     const page = await browser.newPage();
 
     // Allows the ability to log and see it in stdout
@@ -62,7 +68,18 @@ async function generate_pdf(url, timed_out_articles){
     console.log("Going to page");
     // Sleep 0.2 to not DDOS the reporting project
     await exec("sleep 0.2");
-    await page.goto(url);
+
+    try {
+        await page.goto(url);
+    } catch (error) {
+        if (error.name === 'TimeoutError') {
+            timed_out_articles.push((await page.title()));
+        } else {
+            console.log(`Timed out on ${url}!`);
+            throw error;
+        }
+    }
+
 
     await page.evaluate(() => {
         // Replacing a embedded vimeo video with 
@@ -125,20 +142,9 @@ async function generate_pdf(url, timed_out_articles){
         }
     }
 
-    let title = (await page.title());
-    if (title == '') {
-        title = url.replace(/https\:\/\//, '');
-    }
-
-    const title_normalized =
-        (title)
-        .replace(/[^a-zA-Z0-9\.\-\/\# ]/g, '')
-        .replace(/[ \.\/#]/g, '-')
-        .toLowerCase();
-
     console.log("Downloading page as a pdf");
     await page.pdf({
-        path: `./articles-as-pdf/${title_normalized}.pdf`,
+        path: pdf_file_path,
 
         // If set to false, the captions of figures will
         // have a white background covering up images
@@ -149,5 +155,17 @@ async function generate_pdf(url, timed_out_articles){
     });
 
     page.close();
-    console.log("PDF now at " + `./articles-as-pdf/${title_normalized}.pdf`);
+    console.log("PDF now at " + `${pdf_file_path}`);
+}
+
+function get_website_pdf_file_path(url) {
+    const file_name =
+        url
+        .replace(/https\:\/\//, '') // Get rid of the https at the front
+        .replace(/[^a-zA-Z0-9\.\-\/\# ]/g, '') // Get rid of "irregular" characters
+        .replace(/[ \.\/#]/g, '-') // Replace spaces, dots, slashes, and pound with a dash
+        .replace(/-$/g, '') // Remove trailing dashes
+        .toLowerCase();
+
+    return `./articles-as-pdf/${file_name}.pdf`;
 }
