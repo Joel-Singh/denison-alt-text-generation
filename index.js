@@ -24,18 +24,20 @@ for await (const line of article_links_file.readLines()) {
 console.log("Starting browser");
 const browser = await puppeteer.launch({ executablePath: '/home/apple/.nix-profile/bin/google-chrome-stable' });
 
-const page = await browser.newPage();
-// Allows the ability to log and see it in stdout
-await page.exposeFunction('customLog', (message) => {
-    console.log(`${message}`);
-});
-
+const LIMIT = 10;
 const timed_out_articles = [];
-for (let i = 0; i < article_links.length; i++) {
-    const url = article_links[i];
-    console.log(`article ${i+1} out of ${article_links.length}`)
+for (let i = 0; i < article_links.length;) {
 
-    await generate_pdf(url, page, timed_out_articles);
+    const articles_being_downloaded = [];
+    for (let j = 0; j < LIMIT && (i < article_links.length); j++) {
+        console.log(`article ${i+1} out of ${article_links.length}`);
+        const url = article_links[i];
+        articles_being_downloaded.push(generate_pdf(url, timed_out_articles));
+
+        i += 1;
+    }
+
+    await Promise.all(articles_being_downloaded);
 }
 
 await browser.close();
@@ -45,7 +47,14 @@ for (const article of timed_out_articles) {
     console.log(article);
 }
 
-async function generate_pdf(url, page, timed_out_articles){
+async function generate_pdf(url, timed_out_articles){
+    const page = await browser.newPage();
+
+    // Allows the ability to log and see it in stdout
+    await page.exposeFunction('customLog', (message) => {
+        console.log(`${message}`);
+    });
+
     console.log(`Generating PDF for ${url}`);
 
     console.log("Going to page");
@@ -130,5 +139,6 @@ async function generate_pdf(url, page, timed_out_articles){
         tagged: true,
     });
 
+    page.close();
     console.log("PDF now at " + `./articles-as-pdf/${title_normalized}.pdf`);
 }
