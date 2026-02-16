@@ -29,7 +29,7 @@ const timed_out_articles = [];
 const articles_being_downloaded = [];
 
 let i = 0;
-const LIMIT = 10;
+const LIMIT = 5;
 
 const pdfs_being_generated = [];
 for (let j = 0; j < LIMIT; j++) {
@@ -49,16 +49,25 @@ async function continually_generate_pdfs() {
     if (i < article_links.length) {
         console.log(`article ${i+1} out of ${article_links.length}`);
         i++;
-        return generate_pdf(article_links[i-1], timed_out_articles).then(continually_generate_pdfs);
+        const url = article_links[i-1];
+        return generate_pdf(url, timed_out_articles).then(continually_generate_pdfs).catch((error) => {
+            console.log(`Erroring on ${url}`);
+            throw error;
+        });
     }
 }
 
 
 async function generate_pdf(url, timed_out_articles){
+
     let pdf_file_path = get_website_pdf_file_path(url);
     if (fs.existsSync(pdf_file_path)) {
         console.log(`Skipping ${url}, already downloaded`);
         return;
+    }
+
+    function log_with_context(msg) {
+        console.log(`${url}: ${msg}`);
     }
 
 
@@ -66,18 +75,18 @@ async function generate_pdf(url, timed_out_articles){
     try {
         page = await browser.newPage();
     } catch (error) {
-        console.log("Errored on new page");
+        log_with_context(msg);
         throw error;
     }
 
     // Allows the ability to log and see it in stdout
     await page.exposeFunction('customLog', (message) => {
-        console.log(`${message}`);
+        log_with_context(`${message}`);
     });
 
-    console.log(`Generating PDF for ${url}`);
+    log_with_context(`Generating PDF`);
 
-    console.log("Going to page");
+    log_with_context("Going to page");
     // Sleep 0.2 to not DDOS the reporting project
     await exec("sleep 0.2");
 
@@ -133,11 +142,11 @@ async function generate_pdf(url, timed_out_articles){
 
     await exec(`mkdir -p ./articles-as-pdf/`);
 
-    console.log("Waiting for the network to be idle")
+    log_with_context("Waiting for the network to be idle")
     try {
         await page.waitForNetworkIdle();
     } catch (error) {
-        console.log("Errored on waiting for network idle");
+        log_with_context("Errored on waiting for network idle");
 
         if (error.name === 'TimeoutError') {
             timed_out_articles.push((await page.title()));
@@ -146,20 +155,30 @@ async function generate_pdf(url, timed_out_articles){
         }
     }
 
-    console.log("Downloading page as a pdf");
-    await page.pdf({
-        path: pdf_file_path,
+    log_with_context("Downloading page as a pdf");
+    try {
+        await page_pdf_with_retry({
+            path: pdf_file_path,
 
-        // If set to false, the captions of figures will
-        // have a white background covering up images
-        omitBackground: true,
+            // If set to false, the captions of figures will
+            // have a white background covering up images
+            omitBackground: true,
 
-        printBackground: true,
-        tagged: true,
-    });
+            printBackground: true,
+            tagged: true,
+            timeout: 60 * 1000,
+        }, page, url);
+    } catch (error) {
+        log_with_context("Errored on pdf");
+        if (error.name === 'TimeoutError') {
+            log_with_context("PDF Timeout Error");
+        }
+
+        throw error
+    }
 
     page.close();
-    console.log("PDF now at " + `${pdf_file_path}`);
+    log_with_context("PDF now at " + `${pdf_file_path}`);
 }
 
 function get_website_pdf_file_path(url) {
@@ -181,6 +200,19 @@ async function page_goto_with_retry(page, url) {
         if (error.name === "TimeoutError") {
             console.log(`Failed to go to ${url}, trying again`);
             await page_goto_with_retry(page, url);
+        } else {
+            throw error;
+        }
+    }
+}
+
+async function page_pdf_with_retry(pdf_options, page, url) {
+    try {
+        await page.pdf(pdf_options);
+    } catch (error) {
+        if (error.name === "TimeoutError") {
+            console.log(`Timed out downloading ${url} as pdf, trying again`);
+            await page_pdf_with_retry(pdf_options, page, url);
         } else {
             throw error;
         }
