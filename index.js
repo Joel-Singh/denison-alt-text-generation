@@ -110,6 +110,9 @@ async function generate_pdf(url, timed_out_articles){
             }
         }
 
+        customLog("Removing Author Portrait");
+        document.querySelector(".author-avatar")?.remove();
+
         customLog("Generating Alt Text");
         for (const img of document.querySelectorAll("img")) {
             // Removes "loading=lazy" from images so they show up in pdfs
