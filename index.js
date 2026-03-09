@@ -118,9 +118,25 @@ async function generate_pdf(url, timed_out_articles){
             // Removes "loading=lazy" from images so they show up in pdfs
             img.removeAttribute("loading");
 
+            let img_parent = img.parentElement;
             if (img.alt == "") {
                 try {
                     let alt_text = "";
+
+                    let caption = '"empty caption"';
+                    // We also check to see if the figcaption
+                    // comes right after the figure--this isn't
+                    // valid per spec but TRP does it
+                    let figcaption = img_parent.querySelector('figcaption')?.cloneNode(true) || img_parent.parentElement.querySelector('figure + figcaption')?.cloneNode(true);
+
+                    if (figcaption) {
+                        figcaption.querySelector(".image-credit")?.remove();
+                        caption = figcaption.innerText
+                    }
+
+                    let prompt = `Create a terse one sentence description describing WHAT is in this image without extraneous info. Avoid repeating information in the caption: ${caption}.`
+
+                    customLog(`The prompt is: ${prompt} for ${img.src}`)
                     // const { message: { content: alt_text } } = await ollama.chat({
                     //     model: 'qwen3-vl:30b',
                     //     messages: [
@@ -131,7 +147,7 @@ async function generate_pdf(url, timed_out_articles){
                     //         }
                     //     ],
                     // })
-
+                    //
                     // customLog(`Generated as alt text: ${alt_text}`);
 
                     img.alt = alt_text;
@@ -148,8 +164,7 @@ async function generate_pdf(url, timed_out_articles){
             // We don't need to worry about messing up the look of
             // the site because figures are styled through classes
             customLog("Converting figure > img to nonexistentElement > img");
-            let img_parent = img.parentElement;
-            if (img_parent && img_parent.tagName == "FIGURE") {
+            if (img_parent.tagName == "FIGURE") {
                 let new_parent = document.createElement("nonexistentElement");
                 new_parent.innerHTML = img_parent.innerHTML;
                 img_parent.replaceWith(new_parent);
