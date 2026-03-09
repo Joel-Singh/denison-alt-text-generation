@@ -84,6 +84,8 @@ async function generate_pdf(url, timed_out_articles){
         log_with_context(`${message}`);
     });
 
+    await page.exposeFunction('get_base64_encoded', get_base64_encoded);
+
     log_with_context(`Generating PDF`);
 
     log_with_context("Going to page");
@@ -92,7 +94,7 @@ async function generate_pdf(url, timed_out_articles){
 
     await page_goto_with_retry(page, url);
 
-    await page.evaluate(() => {
+    await page.evaluate(async () => {
         // Replacing a embedded vimeo video with 
         const embedded_vimeo_videos = document.querySelectorAll("figure.is-provider-vimeo");
 
@@ -121,8 +123,6 @@ async function generate_pdf(url, timed_out_articles){
             let img_parent = img.parentElement;
             if (img.alt == "") {
                 try {
-                    let alt_text = "";
-
                     let caption = '"empty caption"';
                     // We also check to see if the figcaption
                     // comes right after the figure--this isn't
@@ -137,23 +137,56 @@ async function generate_pdf(url, timed_out_articles){
                     let prompt = `Create a terse one sentence description describing WHAT is in this image without extraneous info. Avoid repeating information in the caption: ${caption}.`
 
                     customLog(`The prompt is: ${prompt} for ${img.src}`)
-                    // const { message: { content: alt_text } } = await ollama.chat({
-                    //     model: 'qwen3-vl:30b',
-                    //     messages: [
-                    //         {
-                    //             role: 'user',
-                    //             content: 'Generate alt text for this image',
-                    //             images: [`${website_download}/${img.src}`]
-                    //         }
-                    //     ],
-                    // })
-                    //
-                    // customLog(`Generated as alt text: ${alt_text}`);
+
+                    let imgBase64EncodedData = null;
+                    try {
+                        customLog(`Fetching ${img.src}`);
+
+                        let blob = await fetch(img.src)
+                            .then(r => r.blob());
+
+                        let dataUrl = await new Promise(resolve => {
+                            let reader = new FileReader();
+                            reader.onload = () => resolve(reader.result);
+                            reader.readAsDataURL(blob);
+                        });
+
+                        let dataStart = dataUrl.search(/,/g) + 1;
+                        imgBase64EncodedData = dataUrl.substr(dataStart);
+                    } catch {
+                        customLog(`Failed to get image for ${img.src}`);
+                    }
+
+                    let message = {
+                        role: 'user',
+                        content: prompt,
+                    };
+
+                    if (imgBase64EncodedData) {
+                        message.images = [imgBase64EncodedData];
+                    }
+
+                    let alt_text = "This alt text was inserted programmatically!";
+
+                    // try {
+                    //     const { message: { content: generated_alt_text } } = await ollama.chat({
+                    //         model: 'qwen3-vl:30b',
+                    //         messages: [
+                    //             message
+                    //         ],
+                    //     });
+                    //     alt_text = generated_alt_text;
+                    // } catch (error) {
+                    //     customLog("Failed to generate alt text!");
+                    //     throw error;
+                    // }
+
+                    customLog(`Generated as alt text: ${alt_text}`);
 
                     img.alt = alt_text;
                 } catch (error) {
                     console.error(error);
-                    process.exit(1);
+                    throw error;
                 }
             }
 
@@ -249,4 +282,21 @@ async function page_pdf_with_retry(pdf_options, page, url) {
             throw error;
         }
     }
+}
+
+// May fail to properly fetch the image
+async function get_base64_encoded(img) {
+    let fetchedImage = (await window.fetch(new Request(img.src))).blob();
+
+    return await blobToDataURL(fetchedImage);
+}
+
+function blobToDataURL(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = _e => resolve(reader.result);
+    reader.onerror = _e => reject(reader.error);
+    reader.onabort = _e => reject(new Error("Read aborted"));
+    reader.readAsDataURL(blob);
+  });
 }
