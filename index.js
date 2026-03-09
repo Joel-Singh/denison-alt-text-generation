@@ -140,6 +140,20 @@ async function generate_pdf(url, timed_out_articles){
                     process.exit(1);
                 }
             }
+
+            // There's a bug where if you have a nested img in a
+            // figure, the resulting pdf is a figure nested in a
+            // figure
+            //
+            // We don't need to worry about messing up the look of
+            // the site because figures are styled through classes
+            customLog("Converting figure > img to nonexistentElement > img");
+            let img_parent = img.parentElement;
+            if (img_parent && img_parent.tagName == "FIGURE") {
+                let new_parent = document.createElement("nonexistentElement");
+                new_parent.innerHTML = img_parent.innerHTML;
+                img_parent.replaceWith(new_parent);
+            }
         }
     });
 
