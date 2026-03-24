@@ -152,7 +152,6 @@ async function generate_pdf(url, timed_out_articles){
             }, image_id, generated_alt_text);
         } catch(error) {
             let img = await page.$(`img[data-generation-id="${image_id}"]`);
-            log_with_context(`The img was ${img.src}`);
             log_with_context(`base64 encoded was: ${base64_encoded}`);
             throw error;
         }
@@ -260,9 +259,6 @@ async function get_prompt(image_id, page) {
 
         let img = document.querySelector(`img[data-generation-id="${image_id}"]`);
 
-        customLog(`Getting prompt for ${img.src}`);
-        customLog(`Getting prompt for ${img.outerHTML}`);
-
         let caption = '"empty caption"';
         let figcaption = img.parentElement.querySelector('figcaption')?.cloneNode(true);
 
@@ -303,6 +299,9 @@ async function get_base64_encoded(image_id, page) {
             });
 
             let dataStart = dataUrl.search(/,/g) + 1;
+
+            customLog(`Base 64 encoded for ${img.src} is ${dataUrl}`);
+
             return dataUrl.substr(dataStart);
         } catch (error) {
             customLog(`Failed to get base64 of ${img.src}`);
