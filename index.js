@@ -84,8 +84,6 @@ async function generate_pdf(url, timed_out_articles){
         log_with_context(`${message}`);
     });
 
-    await page.exposeFunction('get_base64_encoded', get_base64_encoded);
-
     log_with_context(`Generating PDF`);
 
     log_with_context("Going to page");
@@ -94,7 +92,9 @@ async function generate_pdf(url, timed_out_articles){
 
     await page_goto_with_retry(page, url);
 
-    await page.evaluate(async () => {
+    // Gets image IDS and prepares the html to be converted to a
+    // PDF
+    const image_ids = await page.evaluate(async () => {
         // Replacing a embedded vimeo video with 
         const embedded_vimeo_videos = document.querySelectorAll("figure.is-provider-vimeo");
 
@@ -115,7 +115,7 @@ async function generate_pdf(url, timed_out_articles){
         customLog("Removing Author Portrait");
         document.querySelector(".author-avatar")?.remove();
 
-        customLog("Generating Alt Text");
+        const image_ids = []
         for (const img of document.querySelectorAll("img")) {
             // Removes "loading=lazy" from images so they show up in pdfs
             img.removeAttribute("loading");
@@ -123,86 +123,49 @@ async function generate_pdf(url, timed_out_articles){
             let img_parent = img.parentElement;
             if (img.alt == "") {
                 try {
-                    let caption = '"empty caption"';
-                    // We also check to see if the figcaption
-                    // comes right after the figure--this isn't
-                    // valid per spec but TRP does it
-                    let figcaption = img_parent.querySelector('figcaption')?.cloneNode(true) || img_parent.parentElement.querySelector('figure + figcaption')?.cloneNode(true);
-
-                    if (figcaption) {
-                        figcaption.querySelector(".image-credit")?.remove();
-                        caption = figcaption.innerText
-                    }
-
-                    let prompt = `Create a terse one sentence description describing WHAT is in this image without extraneous info. Avoid repeating information in the caption: ${caption}.`
-
-                    customLog(`The prompt is: ${prompt} for ${img.src}`)
-
-                    let imgBase64EncodedData = null;
-                    try {
-                        customLog(`Fetching ${img.src}`);
-
-                        let blob = await fetch(img.src)
-                            .then(r => r.blob());
-
-                        let dataUrl = await new Promise(resolve => {
-                            let reader = new FileReader();
-                            reader.onload = () => resolve(reader.result);
-                            reader.readAsDataURL(blob);
-                        });
-
-                        let dataStart = dataUrl.search(/,/g) + 1;
-                        imgBase64EncodedData = dataUrl.substr(dataStart);
-                    } catch {
-                        customLog(`Failed to get image for ${img.src}`);
-                    }
-
-                    let message = {
-                        role: 'user',
-                        content: prompt,
-                    };
-
-                    if (imgBase64EncodedData) {
-                        message.images = [imgBase64EncodedData];
-                    }
-
-                    let alt_text = "This alt text was inserted programmatically!";
-
-                    // try {
-                    //     const { message: { content: generated_alt_text } } = await ollama.chat({
-                    //         model: 'qwen3-vl:30b',
-                    //         messages: [
-                    //             message
-                    //         ],
-                    //     });
-                    //     alt_text = generated_alt_text;
-                    // } catch (error) {
-                    //     customLog("Failed to generate alt text!");
-                    //     throw error;
-                    // }
-
-                    customLog(`Generated as alt text: ${alt_text}`);
-
-                    img.alt = alt_text;
+                    const new_id = String(Math.random());
+                    img.setAttribute("data-generation-id", new_id);
+                    image_ids.push(new_id);
                 } catch (error) {
                     console.error(error);
                     throw error;
                 }
             }
+        }
 
+        return image_ids;
+    });
+
+    await page.exposeFunction('get_base64_encoded', get_base64_encoded);
+
+    log_with_context("Generating alt text for images");
+    for (const image_id of image_ids) {
+        const base64_encoded = await get_base64_encoded(image_id, page);
+        const prompt = await get_prompt(image_id, page);
+
+        const generated_alt_text = await generate_alt_text(prompt, base64_encoded);
+        await page.evaluate((image_id, generated_alt_text) => {
+            const img = document.querySelector(`img[data-generation-id="${image_id}"]`);
+            img.alt = generated_alt_text;
+        }, image_id, generated_alt_text);
+    }
+
+    await page.evaluate(async () => {
+        for (const img of document.querySelectorAll("img")) {
             // There's a bug where if you have a nested img in a
             // figure, the resulting pdf is a figure nested in a
             // figure
             //
             // We don't need to worry about messing up the look of
             // the site because figures are styled through classes
-            customLog("Converting figure > img to nonexistentElement > img");
-            if (img_parent.tagName == "FIGURE") {
+            if (img.parentElement.tagName == "FIGURE") {
+                customLog("Converting figure > img to nonexistentElement > img");
                 let new_parent = document.createElement("nonexistentElement");
-                new_parent.innerHTML = img_parent.innerHTML;
-                img_parent.replaceWith(new_parent);
+                new_parent.innerHTML = img.parentElement.innerHTML;
+                img.parentElement.replaceWith(new_parent);
             }
         }
+
     });
 
     await exec(`mkdir -p ./articles-as-pdf/`);
@@ -284,19 +247,75 @@ async function page_pdf_with_retry(pdf_options, page, url) {
     }
 }
 
-// May fail to properly fetch the image
-async function get_base64_encoded(img) {
-    let fetchedImage = (await window.fetch(new Request(img.src))).blob();
+async function get_prompt(image_id, page) {
+    return await page.evaluate((image_id) => {
+        let img = document.querySelector(`img[data-generation-id="${image_id}"]`);
+        let caption = '"empty caption"';
+        let figcaption = img.parentElement.querySelector('figcaption')?.cloneNode(true);
 
-    return await blobToDataURL(fetchedImage);
+        // We also check to see if the figcaption
+        // comes right after the figure--this isn't
+        // valid per spec but TRP does it
+        if (!figcaption) {
+            let maybe_figcaption = img.parentElement.nextElementSibling;
+            if (maybe_figcaption?.localName === "figcaption") {
+                figcaption = maybe_figcaption.cloneNode(true);
+            }
+        }
+
+        if (figcaption) {
+            figcaption.querySelector(".image-credit")?.remove();
+            caption = figcaption.innerText
+        }
+
+        let prompt = `Create a terse one sentence description describing WHAT is in this image without extraneous info. Avoid repeating information in the caption: ${caption}.`
+
+        return prompt;
+    }, image_id);
 }
 
-function blobToDataURL(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = _e => resolve(reader.result);
-    reader.onerror = _e => reject(reader.error);
-    reader.onabort = _e => reject(new Error("Read aborted"));
-    reader.readAsDataURL(blob);
-  });
+// Gets the image base64 encoded. This may fail to fetch the
+// image.
+async function get_base64_encoded(image_id, page) {
+    return await page.evaluate(async (image_id) => {
+        let img = document.querySelector(`img[data-generation-id="${image_id}"]`);
+        try {
+            let blob = await fetch(img.src)
+                .then(r => r.blob());
+
+            let dataUrl = await new Promise(resolve => {
+                let reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+            });
+
+            let dataStart = dataUrl.search(/,/g) + 1;
+            return dataUrl.substr(dataStart);
+        } catch (error) {
+            customLog(`Failed to get base64 of ${img.src}`);
+            throw error;
+            return null;
+        }
+    }, image_id);
+}
+
+// This may fail on the call to the locally hosted ollama api
+async function generate_alt_text(prompt, imgBase64EncodedData) {
+    let message = {
+        role: 'user',
+        content: prompt,
+    };
+
+    if (imgBase64EncodedData) {
+        message.images = [imgBase64EncodedData];
+    }
+
+    const { message: { content: generated_alt_text } } = await ollama.chat({
+        model: 'qwen3-vl:30b',
+        messages: [
+            message
+        ],
+    });
+
+    return generated_alt_text;
 }
