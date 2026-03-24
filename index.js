@@ -151,6 +151,8 @@ async function generate_pdf(url, timed_out_articles){
                 img.alt = generated_alt_text;
             }, image_id, generated_alt_text);
         } catch(error) {
+            let img = await page.$(`img[data-generation-id="${image_id}"]`);
+            log_with_context(`The img was ${img.src}`);
             log_with_context(`base64 encoded was: ${base64_encoded}`);
             throw error;
         }
