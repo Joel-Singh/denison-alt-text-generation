@@ -257,7 +257,12 @@ async function page_pdf_with_retry(pdf_options, page, url) {
 
 async function get_prompt(image_id, page) {
     return await page.evaluate((image_id) => {
+
         let img = document.querySelector(`img[data-generation-id="${image_id}"]`);
+
+        customLog(`Getting prompt for ${img.src}`);
+        customLog(`Getting prompt for ${img.outerHTML}`);
+
         let caption = '"empty caption"';
         let figcaption = img.parentElement.querySelector('figcaption')?.cloneNode(true);
 
