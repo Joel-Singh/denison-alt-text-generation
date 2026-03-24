@@ -143,11 +143,17 @@ async function generate_pdf(url, timed_out_articles){
         const base64_encoded = await get_base64_encoded(image_id, page);
         const prompt = await get_prompt(image_id, page);
 
-        const generated_alt_text = await generate_alt_text(prompt, base64_encoded);
-        await page.evaluate((image_id, generated_alt_text) => {
-            const img = document.querySelector(`img[data-generation-id="${image_id}"]`);
-            img.alt = generated_alt_text;
-        }, image_id, generated_alt_text);
+        try {
+            const generated_alt_text = await generate_alt_text(prompt, base64_encoded);
+            log_with_context(`Generated alt text: ${generated_alt_text}`);
+            await page.evaluate((image_id, generated_alt_text) => {
+                const img = document.querySelector(`img[data-generation-id="${image_id}"]`);
+                img.alt = generated_alt_text;
+            }, image_id, generated_alt_text);
+        } catch(error) {
+            log_with_context(`base64 encoded was: ${base64_encoded}`);
+            throw error;
+        }
     }
 
     await page.evaluate(async () => {
