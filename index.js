@@ -141,6 +141,13 @@ async function generate_pdf(url, timed_out_articles){
     log_with_context("Generating alt text for images");
     for (const image_id of image_ids) {
         const base64_encoded = await get_base64_encoded(image_id, page);
+
+        // There seem to be hidden blank images on the website
+        // for some reason? We skip over these.
+        if (base64_encoded.length < 200) {
+            continue;
+        }
+
         const prompt = await get_prompt(image_id, page);
 
         try {
@@ -299,8 +306,6 @@ async function get_base64_encoded(image_id, page) {
             });
 
             let dataStart = dataUrl.search(/,/g) + 1;
-
-            customLog(`Base 64 encoded for ${img.src} is ${dataUrl}`);
 
             return dataUrl.substr(dataStart);
         } catch (error) {
