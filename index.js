@@ -52,7 +52,7 @@ async function continually_generate_pdfs() {
         const url = article_links[i-1];
         return generate_pdf(url, timed_out_articles).then(continually_generate_pdfs).catch((error) => {
             console.log(`Erroring on ${url}`);
-            throw error;
+            console.error(error);
         });
     }
 }
