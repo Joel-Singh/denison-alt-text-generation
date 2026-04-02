@@ -29,6 +29,7 @@ const timed_out_articles = [];
 const articles_being_downloaded = [];
 
 let i = 0;
+let converted_webpages_file_stream = fs.createWriteStream("converted-webpages.txt", {flags:'a'});
 const LIMIT = 5;
 
 const pdfs_being_generated = [];
@@ -45,7 +46,6 @@ for (const article of timed_out_articles) {
     console.log(article);
 }
 
-let converted_webpages_file_stream = fs.createWriteStream("converted-webpages.txt", {flags:'a'});
 async function continually_generate_pdfs() {
     if (i < article_links.length) {
         console.log(`article ${i+1} out of ${article_links.length}`);
