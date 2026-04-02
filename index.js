@@ -51,7 +51,7 @@ async function continually_generate_pdfs() {
         console.log(`article ${i+1} out of ${article_links.length}`);
         i++;
         const url = article_links[i-1];
-        return generate_pdf(url, timed_out_articles).then((_, _) => {
+        return generate_pdf(url, timed_out_articles).then(() => {
             stream.write(`${url}\n`);
         }).then(continually_generate_pdfs).catch((error) => {
             console.log(`Erroring on ${url}`);
