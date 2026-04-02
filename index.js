@@ -45,12 +45,15 @@ for (const article of timed_out_articles) {
 }
 
 let i = 0;
+let file = fs.createWriteStream("converted-webpages.txt", {flags:'a'});
 async function continually_generate_pdfs() {
     if (i < article_links.length) {
         console.log(`article ${i+1} out of ${article_links.length}`);
         i++;
         const url = article_links[i-1];
-        return generate_pdf(url, timed_out_articles).then(continually_generate_pdfs).catch((error) => {
+        return generate_pdf(url, timed_out_articles).then((_, _) => {
+            stream.write(`${url}\n`);
+        }).then(continually_generate_pdfs).catch((error) => {
             console.log(`Erroring on ${url}`);
             console.error(error);
         });
